@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let expenses = [];
 
     function loadExpenses() {
-        let savedExpenses = localStorage.getItem('expenses');
+        let savedData = localStorage.getItem('expenses');
 
         try {
-            expenses = savedExpenses ? JSON.parse(savedExpenses) : [];
+            expenses = savedData ? JSON.parse(savedData) : [];
         } catch (error) {
             expenses = [];
         }
@@ -21,11 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
             expenses = [];
         }
 
+        let changed = false;
+
         expenses.forEach((expense, index) => {
             if (!expense.id) {
                 expense.id = Date.now() + index;
+                changed = true;
             }
         });
+
+        if (changed) {
+            saveExpenses();
+        }
     }
 
     function saveExpenses() {
@@ -124,7 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 deleteButton.addEventListener('click', () => {
                     if (confirm('Delete this expense?')) {
-                        expenses = expenses.filter((item) => item.id !== expense.id);
+                        expenses = expenses.filter(
+                            item => String(item.id) !== String(expense.id)
+                        );
 
                         saveExpenses();
                         displayExpenses();
@@ -146,6 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        document.getElementById('count').textContent = visibleCount;
+
         document.getElementById('empty-message').classList.toggle(
             'd-none', visibleCount > 0
         );
@@ -154,19 +165,52 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('edit-form').addEventListener('submit', (event) => {
         event.preventDefault();
 
-        let expenseId = Number(document.getElementById('edit-id').value);
+        let expenseId = document.getElementById('edit-id').value;
         let title = document.getElementById('edit-title').value.trim();
         let amount = document.getElementById('edit-amount').value;
         let category = document.getElementById('edit-category').value;
         let date = document.getElementById('edit-date').value;
 
-        if (title === '' || amount === '' || Number(amount) <= 0 ||
-            category === '' || date === '') {
-            showMessage('Please complete all fields correctly');
+        let fields = ['title', 'amount', 'category', 'date'];
+        let hasErrors = false;
+
+        fields.forEach((field) => {
+            let input = document.getElementById('edit-' + field);
+            let error = document.querySelector('.error[data-for="' + field + '"]');
+
+            input.classList.remove('is-invalid');
+            error.textContent = '';
+        });
+
+        function showError(field, message) {
+            document.getElementById('edit-' + field).classList.add('is-invalid');
+            document.querySelector('.error[data-for="' + field + '"]').textContent = message;
+            hasErrors = true;
+        }
+
+        if (title === '') {
+            showError('title', 'Title is required.');
+        }
+
+        if (amount === '' || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+            showError('amount', 'Enter an amount greater than zero.');
+        }
+
+        if (category === '') {
+            showError('category', 'Please select a category.');
+        }
+
+        if (date === '') {
+            showError('date', 'Date is required.');
+        }
+
+        if (hasErrors) {
             return;
         }
 
-        let expense = expenses.find((item) => item.id === expenseId);
+        let expense = expenses.find(
+            item => String(item.id) === String(expenseId)
+        );
 
         if (!expense) {
             showMessage('Expense not found');
@@ -181,7 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
         saveExpenses();
         editModal.hide();
         displayExpenses();
-
         showMessage('Expense updated successfully');
     });
 
@@ -198,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('load-sample').addEventListener('click', () => {
-
         expenses = [
             { id: Date.now(), title: 'Coffee', amount: 350, category: 'Food', date: '2026-11-02' },
             { id: Date.now() + 1, title: 'Bus ticket', amount: 40, category: 'Transport', date: '2026-11-03' },
